@@ -49,6 +49,7 @@ from ..utils import (
     prefix_generate_users,
     validate_csvfile,
 )
+from .fields import FallbackBooleanField, FallbackChoiceField, FallbackTextField
 from .validators import ipv6_network_validator
 
 logger = logging.getLogger(__name__)
@@ -157,6 +158,7 @@ _REGISTRATION_ENABLED_HELP_TEXT = _(
     'Whether the registration API endpoint should be enabled or not'
 )
 _ORGANIZATION_HELP_TEXT = _('The user is not a member of this organization')
+OPTIONAL_SETTINGS = app_settings.OPTIONAL_REGISTRATION_FIELDS
 
 
 class AutoUsernameMixin(object):
@@ -1033,6 +1035,12 @@ class AbstractRadiusToken(OrgMixin, TimeStampedEditableModel, models.Model):
         return self.key
 
 
+def _enabled_disabled_helper():
+    if app_settings.REGISTRATION_API_ENABLED:
+        return _('Enabled')
+    return _('Disabled')
+
+
 class AbstractOrganizationRadiusSettings(UUIDModel):
     organization = models.OneToOneField(
         swapper.get_model_name('openwisp_users', 'Organization'),
@@ -1065,46 +1073,64 @@ class AbstractOrganizationRadiusSettings(UUIDModel):
             'Additional configuration for SMS backend in JSON format (optional)'
         ),
     )
-    freeradius_allowed_hosts = models.TextField(
-        null=True, blank=True, help_text=_GET_IP_LIST_HELP_TEXT,
+    freeradius_allowed_hosts = FallbackTextField(
+        null=True,
+        blank=True,
+        help_text=_GET_IP_LIST_HELP_TEXT,
+        fallback=','.join(app_settings.FREERADIUS_ALLOWED_HOSTS),
     )
-    allowed_mobile_prefixes = models.TextField(
-        null=True, blank=True, help_text=_GET_MOBILE_PREFIX_HELP_TEXT,
+    allowed_mobile_prefixes = FallbackTextField(
+        null=True,
+        blank=True,
+        help_text=_GET_MOBILE_PREFIX_HELP_TEXT,
+        fallback=','.join(app_settings.ALLOWED_MOBILE_PREFIXES),
     )
-    first_name = models.CharField(
+    first_name = FallbackChoiceField(
         verbose_name=_('first name'),
         help_text=_GET_OPTIONAL_FIELDS_HELP_TEXT,
         max_length=12,
         null=True,
         blank=True,
         choices=OPTIONAL_FIELD_CHOICES,
+        fallback=OPTIONAL_SETTINGS.get('first_name', 'disabled'),
     )
-    last_name = models.CharField(
+    last_name = FallbackChoiceField(
         verbose_name=_('last name'),
         help_text=_GET_OPTIONAL_FIELDS_HELP_TEXT,
         max_length=12,
         null=True,
         blank=True,
         choices=OPTIONAL_FIELD_CHOICES,
+        fallback=OPTIONAL_SETTINGS.get('last_name', 'disabled'),
     )
-    location = models.CharField(
+    location = FallbackChoiceField(
         verbose_name=_('location'),
         help_text=_GET_OPTIONAL_FIELDS_HELP_TEXT,
         max_length=12,
         null=True,
         blank=True,
         choices=OPTIONAL_FIELD_CHOICES,
+        fallback=OPTIONAL_SETTINGS.get('location', 'disabled'),
     )
-    birth_date = models.CharField(
+    birth_date = FallbackChoiceField(
         verbose_name=_('birth date'),
         help_text=_GET_OPTIONAL_FIELDS_HELP_TEXT,
         max_length=12,
         null=True,
         blank=True,
         choices=OPTIONAL_FIELD_CHOICES,
+        fallback=OPTIONAL_SETTINGS.get('birth_date', 'disabled'),
     )
-    registration_enabled = models.BooleanField(
-        null=True, blank=True, default=True, help_text=_REGISTRATION_ENABLED_HELP_TEXT,
+    registration_enabled = FallbackBooleanField(
+        null=True,
+        blank=True,
+        help_text=_REGISTRATION_ENABLED_HELP_TEXT,
+        choices=[
+            ('', _('Default') + f' ({_enabled_disabled_helper()})'),
+            (True, _('Enabled')),
+            (False, _('Disabled')),
+        ],
+        fallback='',
     )
 
     class Meta:

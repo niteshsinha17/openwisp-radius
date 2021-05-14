@@ -12,24 +12,13 @@ from django.utils.translation import gettext_lazy as _
 from openwisp_users.admin import OrganizationAdmin
 from openwisp_users.admin import UserAdmin as UserAdminInline
 from openwisp_users.multitenancy import MultitenantAdminMixin, MultitenantOrgFilter
-from openwisp_utils.admin import (
-    AlwaysHasChangedMixin,
-    ReadOnlyAdmin,
-    TimeReadonlyAdminMixin,
-)
+from openwisp_utils.admin import ReadOnlyAdmin, TimeReadonlyAdminMixin
 
 from . import settings as app_settings
 from .base.admin_actions import disable_action, enable_action
 from .base.admin_filters import DuplicateListFilter, ExpiredListFilter
 from .base.forms import ModeSwitcherForm, RadiusBatchForm, RadiusCheckForm
-from .base.models import (
-    _GET_IP_LIST_HELP_TEXT,
-    _GET_MOBILE_PREFIX_HELP_TEXT,
-    _GET_OPTIONAL_FIELDS_HELP_TEXT,
-    _REGISTRATION_ENABLED_HELP_TEXT,
-    OPTIONAL_FIELD_CHOICES,
-    _encode_secret,
-)
+from .base.models import _encode_secret
 from .utils import load_model
 
 Nas = load_model('Nas')
@@ -501,89 +490,8 @@ class PhoneTokenInline(TimeReadonlyAdminMixin, StackedInline):
 UserAdminInline.inlines += [RadiusUserGroupInline, PhoneTokenInline]
 
 
-class FallbackFieldMixin(object):
-    def __init__(self, fallback, *args, **kwargs):
-        self.fallback = fallback
-        super().__init__(*args, **kwargs)
-
-    def prepare_value(self, value):
-        if value is None:
-            value = self.fallback
-        return super().prepare_value(value)
-
-
-class FallbackCharField(FallbackFieldMixin, forms.CharField):
-    pass
-
-
-class FallbackChoiceField(FallbackFieldMixin, forms.ChoiceField):
-    pass
-
-
-class FallbackNullChoiceField(FallbackFieldMixin, forms.NullBooleanField):
-    pass
-
-
-def _enabled_disabled_helper():
-    if app_settings.REGISTRATION_API_ENABLED:
-        return _('Enabled')
-    return _('Disabled')
-
-
-class AlwaysHasChangedForm(AlwaysHasChangedMixin, forms.ModelForm):
-    freeradius_allowed_hosts = FallbackCharField(
-        required=False,
-        widget=forms.Textarea(attrs={'rows': 2, 'cols': 34}),
-        help_text=_GET_IP_LIST_HELP_TEXT,
-        fallback=','.join(app_settings.FREERADIUS_ALLOWED_HOSTS),
-    )
-    allowed_mobile_prefixes = FallbackCharField(
-        required=False,
-        widget=forms.Textarea(attrs={'rows': 2, 'cols': 34}),
-        help_text=_GET_MOBILE_PREFIX_HELP_TEXT,
-        fallback=','.join(app_settings.ALLOWED_MOBILE_PREFIXES),
-    )
-    registration_enabled = FallbackNullChoiceField(
-        required=False,
-        widget=Select(
-            choices=[
-                ('', _('Default') + f' ({_enabled_disabled_helper()})'),
-                (True, _('Enabled')),
-                (False, _('Disabled')),
-            ]
-        ),
-        help_text=_REGISTRATION_ENABLED_HELP_TEXT,
-        fallback='',
-    )
-    first_name = FallbackChoiceField(
-        required=False,
-        help_text=_GET_OPTIONAL_FIELDS_HELP_TEXT,
-        choices=OPTIONAL_FIELD_CHOICES,
-        fallback=OPTIONAL_SETTINGS.get('first_name', 'disabled'),
-    )
-    last_name = FallbackChoiceField(
-        required=False,
-        help_text=_GET_OPTIONAL_FIELDS_HELP_TEXT,
-        choices=OPTIONAL_FIELD_CHOICES,
-        fallback=OPTIONAL_SETTINGS.get('last_name', 'disabled'),
-    )
-    location = FallbackChoiceField(
-        required=False,
-        help_text=_GET_OPTIONAL_FIELDS_HELP_TEXT,
-        choices=OPTIONAL_FIELD_CHOICES,
-        fallback=OPTIONAL_SETTINGS.get('location', 'disabled'),
-    )
-    birth_date = FallbackChoiceField(
-        required=False,
-        help_text=_GET_OPTIONAL_FIELDS_HELP_TEXT,
-        choices=OPTIONAL_FIELD_CHOICES,
-        fallback=OPTIONAL_SETTINGS.get('birth_date', 'disabled'),
-    )
-
-
 class OrganizationRadiusSettingsInline(admin.StackedInline):
     model = OrganizationRadiusSettings
-    form = AlwaysHasChangedForm
     fieldsets = (
         (
             None,

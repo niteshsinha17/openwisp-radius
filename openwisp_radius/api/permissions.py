@@ -34,6 +34,7 @@ class IsSmsVerificationEnabled(BasePermission):
 class IsRegistrationEnabled(BasePermission):
     def has_permission(self, request, view):
         # check for organization's local setting
+        print("finding me?")
         try:
             registration_enabled = (
                 view.organization.radius_settings.registration_enabled
@@ -41,6 +42,7 @@ class IsRegistrationEnabled(BasePermission):
         except OrganizationRadiusSettings.DoesNotExist:
             registration_enabled = None
         # check for global setting if organization setting not set / doesn't exist
+        print(registration_enabled)
         if registration_enabled is None:
             registration_enabled = app_settings.REGISTRATION_API_ENABLED
         return registration_enabled
